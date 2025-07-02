@@ -167,6 +167,7 @@ public class Game {
         GAME_SIZE = 4;
         this.tiles = new Tile[GAME_SIZE][GAME_SIZE];
         spawnRandomTile();
+        spawnRandomTile();
         printGame();
     }
 
@@ -181,8 +182,20 @@ public class Game {
                 Tile tile = this.tiles[row][col];
                 System.out.print((tile != null ? String.format("%4d", tile.value) : "   -") + " ");
             }
+            System.out.println();
         }
         System.out.println("----------------------");
+    }
+
+    private boolean didWinTheGame() {
+        for (int row = 0; row < GAME_SIZE; row ++) {
+            for (int col = 0; col < GAME_SIZE; col++) {
+                if (tiles[row][col] != null && tiles[row][col].value == 2048) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void spawnRandomTile() {
@@ -200,10 +213,11 @@ public class Game {
         }
     }
 
-    public void makeNextMove(Direction direction) {
+    public boolean makeNextMove(Direction direction) {
         merge(direction);
         spawnRandomTile();
         printGame();
+        return didWinTheGame();
     }
 }
 
@@ -218,23 +232,27 @@ class Run {
             System.out.println("\n Left: 1 \n Right: 2 \n Up: 3 \n Down: 4");
             input = scanner.nextLine();
             System.out.println("Input chosen: " + input);
-
+            boolean winTheGame = false;
 
             switch (input) {
                 case "1":
-                    game.makeNextMove(Direction.LEFT);
+                    winTheGame = winTheGame || game.makeNextMove(Direction.LEFT);
                     break;
                 case "2":
-                    game.makeNextMove(Direction.RIGHT);
+                    winTheGame = winTheGame || game.makeNextMove(Direction.RIGHT);
                     break;
                 case "3":
-                    game.makeNextMove(Direction.UP);
+                    winTheGame = winTheGame || game.makeNextMove(Direction.UP);
                     break;
                 case "4":
-                    game.makeNextMove(Direction.DOWN);
+                    winTheGame = winTheGame || game.makeNextMove(Direction.DOWN);
                     break;
                 default:
                     break;
+            }
+
+            if (winTheGame) {
+                System.out.println("Hooray won the game");
             }
         }
         scanner.close();
