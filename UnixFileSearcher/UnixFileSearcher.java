@@ -9,20 +9,65 @@ import java.util.Set;
 
 public class UnixFileSearcher {
     public static void main(String[] args) {
-        File root = new File("root", "Rahul Sharma", new BigDecimal(12123323));
-        File file1 = new File("file1.txt", "Rahul Sharma", new BigDecimal(200));
-        File file2 = new File("file2.pdf", "Rahul Sharma", new BigDecimal(300));
+        try {
+            testByOwner();
+            testBySize();
+            testCompositeCriteria();
+            System.out.println("✅ All tests passed.");
+        } catch(AssertionError error) {
+            System.err.println("Assertion error found");
+            error.printStackTrace();
+        }
+    }
 
+    static void testByOwner() {
+        File root = new File("root", "admin", new BigDecimal(1000));
+        File file1 = new File("file1.txt", "alice", new BigDecimal(200));
+        File file2 = new File("file2.txt", "bob", new BigDecimal(300));
         root.addChildren(file1);
         root.addChildren(file2);
 
-        Criteria<String> ownerCriteria = new SimplifiedCriteria<>(new EqualOperator<>(), CompareBy.OWNER, "Rahul Sharma");
+        Criteria<String> criteria = new SimplifiedCriteria<>(new EqualOperator<>(), CompareBy.OWNER, "alice");
+        FileSearchQuery query = new FileSearchQuery(root, criteria);
 
-        FileSearchQuery query = new FileSearchQuery(root, ownerCriteria);
-        List<File> results = query.search();
-        assert results.size() == 2;
+        List<File> result = query.search();
+        assert result.size() == 1 : "Expected 1 file";
+        assert result.get(0).getProperty(CompareBy.OWNER).equals("alice");
+    }
 
-        results.forEach(it -> System.out.println(it.getProperty(CompareBy.FILE_NAME)));
+    static void testBySize() {
+        File root = new File("root", "user", new BigDecimal(999));
+        File file1 = new File("bigfile.txt", "user", new BigDecimal(5000));
+        File file2 = new File("smallfile.txt", "user", new BigDecimal(100));
+        root.addChildren(file1);
+        root.addChildren(file2);
+
+        Criteria<BigDecimal> sizeCriteria = new SimplifiedCriteria<>(new GreaterThanOperator<>(), CompareBy.SIZE, new BigDecimal(1000));
+        FileSearchQuery query = new FileSearchQuery(root, sizeCriteria);
+
+        List<File> result = query.search();
+        assert result.size() == 1 : "Expected 1 file";
+        assert result.get(0).getProperty(CompareBy.FILE_NAME).equals("bigfile.txt");
+    }
+
+    static void testCompositeCriteria() {
+        File root = new File("root", "admin", new BigDecimal(999));
+        File file1 = new File("doc1.pdf", "admin", new BigDecimal(300));
+        File file2 = new File("doc2.pdf", "admin", new BigDecimal(150));
+        root.addChildren(file1);
+        root.addChildren(file2);
+
+        Criteria<BigDecimal> sizeCriteria = new SimplifiedCriteria<>(new GreaterThanOperator<>(), CompareBy.SIZE, new BigDecimal(200));
+        Criteria<String> extCriteria = new SimplifiedCriteria<>(new EqualOperator<>(), CompareBy.EXTENSION, "pdf");
+
+        List<Criteria> conditions = List.of(sizeCriteria, extCriteria);
+        Criteria andCriteria = new AndCriteria(conditions);
+
+        FileSearchQuery query = new FileSearchQuery(root, andCriteria);
+        List<File> result = query.search();
+
+        assert result.size() == 1 : "Expected 1 matching file";
+        assert result.get(0).getProperty(CompareBy.FILE_NAME).equals("doc1.pdf");
     }
 }
 
@@ -133,7 +178,7 @@ class GreaterThanOperator<T extends Comparable<T>> implements ComparisonOperator
     }
 }
 
-class SimplifiedCriteria<T> implements Criteria {
+class SimplifiedCriteria<T> implements Criteria<T> {
     private ComparisonOperator<T> comparisonOperator;
     private CompareBy compareBy;
     private T compareByValue;
@@ -156,22 +201,20 @@ class SimplifiedCriteria<T> implements Criteria {
 
 }
 
-interface CompositeCriteria<T> extends Criteria {
+interface CompositeCriteria<T> extends Criteria<T> {
     
 }
 
 class AndCriteria<T> implements CompositeCriteria<T> {
-    List<Criteria<T>> simplifiedCriteriaList;
+    List<Criteria<T>> criteriaList;
 
-    
-
-    public AndCriteria(List<Criteria<T>> simplifiedCriteriaList) {
-        this.simplifiedCriteriaList = simplifiedCriteriaList;
+    public AndCriteria(List<Criteria<T>> criteriaList) {
+        this.criteriaList = criteriaList;
     }
 
     @Override
     public boolean doesMatch(File file) {
-        return simplifiedCriteriaList.stream().allMatch(it -> it.doesMatch(file));
+        return criteriaList.stream().allMatch(it -> it.doesMatch(file));
     }
 }
 
