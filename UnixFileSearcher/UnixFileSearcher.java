@@ -20,6 +20,7 @@ public class UnixFileSearcher {
 
         FileSearchQuery query = new FileSearchQuery(root, ownerCriteria);
         List<File> results = query.search();
+        assert results.size() == 2;
 
         results.forEach(it -> System.out.println(it.getProperty(CompareBy.FILE_NAME)));
     }
@@ -84,11 +85,12 @@ class FileSearchQuery {
 
     private Set<File> getFileDFS(File file) {
         Set<File> files = file.getChildren();
-        Set<File> allChildren = new HashSet<>();
+        Set<File> allFiles = new HashSet<>();
+        allFiles.add(file);
         for(File children: files) {
-            allChildren.addAll(getFileDFS(children));
+            allFiles.addAll(getFileDFS(children));
         }
-        return allChildren;
+        return allFiles;
     }
 
     public List<File> search() {
@@ -159,11 +161,11 @@ interface CompositeCriteria<T> extends Criteria {
 }
 
 class AndCriteria<T> implements CompositeCriteria<T> {
-    List<SimplifiedCriteria<T>> simplifiedCriteriaList;
+    List<Criteria<T>> simplifiedCriteriaList;
 
     
 
-    public AndCriteria(List<SimplifiedCriteria<T>> simplifiedCriteriaList) {
+    public AndCriteria(List<Criteria<T>> simplifiedCriteriaList) {
         this.simplifiedCriteriaList = simplifiedCriteriaList;
     }
 
@@ -174,9 +176,9 @@ class AndCriteria<T> implements CompositeCriteria<T> {
 }
 
 class OrCriteria<T> implements CompositeCriteria<T> {
-    List<SimplifiedCriteria<T>> simplifiedCriteriaList;
+    List<Criteria<T>> simplifiedCriteriaList;
 
-    public OrCriteria(List<SimplifiedCriteria<T>> simplifiedCriteriaList) {
+    public OrCriteria(List<Criteria<T>> simplifiedCriteriaList) {
         this.simplifiedCriteriaList = simplifiedCriteriaList;
     }
 
